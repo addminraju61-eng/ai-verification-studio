@@ -1554,7 +1554,6 @@
             const cfg = getEmailjsConfig();
             const gasUrl = (cfg.gasUrl || '').trim();
 
-            // Primary Channel: Google Apps Script Web App (100 free emails/day via your Gmail)
             if (gasUrl) {
                 try {
                     await fetchWithTimeout(gasUrl, {
@@ -1572,7 +1571,6 @@
                 } catch {}
             }
 
-            // Secondary Channel: EmailJS (if configured)
             if (cfg.serviceId && cfg.templateId && cfg.publicKey && window.emailjs) {
                 try {
                     window.emailjs.init({ publicKey: cfg.publicKey });
@@ -1591,30 +1589,6 @@
             }
 
             return { sent: false };
-        }
-        function saveEmailjsConfig(cfg) { localStorage.setItem(EMAILJS_STORAGE_KEY, JSON.stringify(cfg)); }
-
-        async function sendVerificationCodeEmail(toEmail, username, otpCode, purpose = 'Login Verification') {
-            const cfg = getEmailjsConfig();
-            if (!cfg.serviceId || !cfg.templateId || !cfg.publicKey || !window.emailjs) {
-                return { sent: false };
-            }
-            try {
-                window.emailjs.init({ publicKey: cfg.publicKey });
-                await window.emailjs.send(cfg.serviceId, cfg.templateId, {
-                    to_email: toEmail,
-                    user_email: toEmail,
-                    email: toEmail,
-                    to_name: username,
-                    username,
-                    otp_code: otpCode,
-                    code: otpCode,
-                    message: `Your ${purpose} OTP code is: ${otpCode}`
-                });
-                return { sent: true };
-            } catch {
-                return { sent: false };
-            }
         }
 
         function copyTextFallback(text, successMsg) {
@@ -1648,7 +1622,6 @@
             localStorage.setItem(USAGE_STORAGE_KEY, JSON.stringify(map));
             updateRoleBasedUI();
 
-            // Persist permanently to Supabase studio_users table
             if (sb && username) {
                 try {
                     const { data: latestRow } = await sb
@@ -1695,7 +1668,6 @@
             return { allowed: true };
         }
 
-        // URL Auto-Fill (?user=...&email=...)
         function applyUrlAutoFillAndSync() {
             try {
                 const url = new URL(window.location.href);
@@ -2035,7 +2007,6 @@
             if (submitBtn) submitBtn.disabled = true;
             if (document.getElementById('loginSubmitBtnText')) document.getElementById('loginSubmitBtnText').textContent = 'যাচাই হচ্ছে...';
 
-            // Sync latest cloud users before matching credentials
             await syncCloudState();
 
             if (submitBtn) submitBtn.disabled = false;
@@ -2096,20 +2067,6 @@
                 notice.classList.remove('hidden');
             } else {
                 showToast(`${recoveryEmail}-এ পাসওয়ার্ড রিসেট কোড পাঠানো হয়েছে!`, 'success');
-            }
-        });
-
-        // Password recovery
-        document.getElementById('forgotAdminPassBtn')?.addEventListener('click', async () => {
-            const code = String(Math.floor(100000 + Math.random() * 900000));
-            pendingAdminRecovery = { code };
-            document.getElementById('loginCredentialsStep')?.classList.add('hidden');
-            document.getElementById('adminRecoveryStep')?.classList.remove('hidden');
-            const res = await sendVerificationCodeEmail(ADMIN_LOCKED_EMAIL, 'Main Admin', code, 'Admin Password Recovery');
-            const notice = document.getElementById('recoveryFallbackNotice');
-            if (!res.sent && notice) {
-                notice.textContent = `রিসেট কোড: ${code}`;
-                notice.classList.remove('hidden');
             }
         });
 
@@ -2204,6 +2161,9 @@
             updateMasterApiBadge();
             renderAdminUsersList();
         });
+        document.getElementById('closeAdminModalBtn')?.addEventListener('click', () => {
+            document.getElementById('adminManageModal')?.classList.add('hidden');
+        });
         document.getElementById('saveEmailjsConfigBtn')?.addEventListener('click', async () => {
             const newOtpCfg = {
                 gasUrl: document.getElementById('gasWebAppUrlInput')?.value.trim() || '',
@@ -2213,7 +2173,6 @@
             };
             saveEmailjsConfig(newOtpCfg);
 
-            // Update Main Admin Email if changed
             const newAdminMail = document.getElementById('mainAdminEmailSettingInput')?.value.trim();
             if (newAdminMail) {
                 const users = getStoredUsers();
@@ -2226,7 +2185,6 @@
                 }
             }
 
-            // Sync OTP settings into Supabase studio_config.model_cfg so all devices use it
             const currentModelCfg = { ...getActiveModelConfig(), otpSettings: newOtpCfg };
             localStorage.setItem(MODEL_CONFIG_STORAGE_KEY, JSON.stringify(currentModelCfg));
             await saveCloudGlobalConfig(getBox1GeminiKey(), getBox2FalKey(), getBox3ElevenKey(), currentModelCfg);
@@ -2423,15 +2381,6 @@
                 }
             });
             tokenClient.requestAccessToken({ prompt: 'select_account' });
-        });
-
-        document.getElementById('saveEmailjsConfigBtn')?.addEventListener('click', () => {
-            saveEmailjsConfig({
-                serviceId: document.getElementById('emailjsServiceId')?.value.trim() || '',
-                templateId: document.getElementById('emailjsTemplateId')?.value.trim() || '',
-                publicKey: document.getElementById('emailjsPublicKey')?.value.trim() || ''
-            });
-            showToast('EmailJS সেটিংস সেভ করা হয়েছে!', 'success');
         });
 
         document.getElementById('createUserAccountBtn')?.addEventListener('click', async () => {
@@ -2745,7 +2694,6 @@
             const geminiKey = getBox1GeminiKey();
             const cfg = getActiveModelConfig();
 
-            // Route 1: Box 2 Dedicated fal.ai API
             if (falKey && !falKey.startsWith('AIza')) {
                 const endpoint = cfg.customFalModel || cfg.falModel || 'fal-ai/flux-pro/kontext';
                 const res = await fetchWithTimeout(`https://fal.run/${endpoint}`, {
@@ -2769,7 +2717,6 @@
                 throw new Error('fal.ai থেকে কোনো ছবি পাওয়া যায়নি।');
             }
 
-            // Route 2: Box 1 All-in-One Gemini API (or Pro Gmail OAuth)
             if (!hasActiveGeminiAuth(geminiKey)) {
                 throw new Error('ছবির জন্য বক্স ১ (All-in-One Gemini) অথবা বক্স ২ (fal.ai API) সেট করা নেই।');
             }
@@ -2942,7 +2889,7 @@
         });
 
         // ==========================================
-        // 3. SECTOR 9: REGIONAL FEMALE VOICE CLONE STUDIO (ELEVENLABS + GEMINI)
+        // 3. SECTOR 9: REGIONAL FEMALE VOICE CLONE STUDIO
         // ==========================================
         const REGIONAL_VOICE_DATA = {
             USA: [
