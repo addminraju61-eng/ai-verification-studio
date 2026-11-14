@@ -160,9 +160,6 @@
                     <button type="button" id="forgotAdminPassBtn" class="text-[11px] text-amber-400 hover:text-amber-300 font-bold underline underline-offset-2">
                         <i class="fa-solid fa-unlock-keyhole mr-1"></i>অ্যাডমিন পাসওয়ার্ড ভুলে গেছেন?
                     </button>
-                    <button type="button" id="quickAdminLoginBtn" class="px-2.5 py-1.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-400 font-bold text-[10px] transition">
-                        <i class="fa-solid fa-bolt mr-1"></i>অটো-ফিল Admin
-                    </button>
                 </div>
             </form>
         </div>
@@ -1944,14 +1941,6 @@
         }
 
         // Login, OTP, Password Recovery & Logout Yes/No Events
-        document.getElementById('quickAdminLoginBtn')?.addEventListener('click', () => {
-            const adminAcc = getStoredUsers().find(u => u.role === 'main_admin') || DEFAULT_USERS[0];
-            document.getElementById('loginUsernameInput').value = adminAcc.username;
-            document.getElementById('loginEmailInput').value = adminAcc.email;
-            document.getElementById('loginPasswordInput').value = adminAcc.password;
-            showToast('মেইন অ্যাডমিন তথ্য অটো-ফিল করা হয়েছে।', 'info');
-        });
-
         document.getElementById('backToCredentialsBtn')?.addEventListener('click', () => {
             pendingOtpChallenge = null;
             document.getElementById('loginOtpStep')?.classList.add('hidden');
@@ -1998,7 +1987,7 @@
                 return;
             }
 
-            const uVal = document.getElementById('loginUsernameInput')?.value.trim();
+            const uVal = document.getElementById('loginUsernameInput')?.value.trim().toLowerCase();
             const eVal = document.getElementById('loginEmailInput')?.value.trim().toLowerCase();
             const pVal = document.getElementById('loginPasswordInput')?.value.trim();
 
@@ -2012,10 +2001,11 @@
             if (submitBtn) submitBtn.disabled = false;
             if (document.getElementById('loginSubmitBtnText')) document.getElementById('loginSubmitBtnText').textContent = origText;
 
-            const matched = getStoredUsers().find(u =>
-                u.username.toLowerCase() === uVal.toLowerCase() &&
-                u.password === pVal &&
-                (!u.email || u.email.toLowerCase() === eVal)
+            const allStoredUsers = getStoredUsers();
+            const matched = allStoredUsers.find(u =>
+                (u.username || '').trim().toLowerCase() === uVal &&
+                (u.password || '').trim() === pVal &&
+                (!u.email || (u.email || '').trim().toLowerCase() === eVal)
             );
 
             if (!matched) {
@@ -2415,7 +2405,8 @@
             document.getElementById('newAccountEmail').value = '';
             document.getElementById('newAccountPass').value = '';
             renderAdminUsersList();
-            showToast(`অ্যাকাউন্ট (${username}) ক্লাউডে তৈরি হয়েছে!`, 'success');
+            await syncCloudState();
+            showToast(`অ্যাকাউন্ট (${username}) ক্লাউডে তৈরি ও সিঙ্ক হয়েছে!`, 'success');
         });
 
         document.getElementById('subCreateUserBtn')?.addEventListener('click', async () => {
@@ -2451,7 +2442,8 @@
             document.getElementById('subNewEmail').value = '';
             document.getElementById('subNewPass').value = '';
             renderSubAdminUsersList();
-            showToast(`ইউজার (${username}) ক্লাউডে তৈরি হয়েছে!`, 'success');
+            await syncCloudState();
+            showToast(`ইউজার (${username}) ক্লাউডে তৈরি ও সিঙ্ক হয়েছে!`, 'success');
         });
 
         // ==========================================
