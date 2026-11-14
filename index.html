@@ -1996,6 +1996,7 @@
             if (submitBtn) submitBtn.disabled = true;
             if (document.getElementById('loginSubmitBtnText')) document.getElementById('loginSubmitBtnText').textContent = 'যাচাই হচ্ছে...';
 
+            // CRITICAL FIX: Ensure we fetch latest cloud users from Supabase right before verifying credentials
             await syncCloudState();
 
             if (submitBtn) submitBtn.disabled = false;
